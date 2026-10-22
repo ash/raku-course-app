@@ -30,6 +30,8 @@ my $RUN-CHECK = !@args.grep('--no-run-check');
 my $ENGINE = %*ENV<RAKUPP> // 'rakupp';
 my $ROOT = (@args[0] // %*ENV<HOME> ~ '/raku-course').IO;
 die "Course root not found: $ROOT" unless $ROOT.d;
+# Course images are copied here (see image-block).
+my $IMAGES = $*PROGRAM.absolute.IO.parent.parent.add('assets/images');
 
 # ---------------------------------------------------------------------------
 # Minimal JSON encoder (JSON::Fast is not installed in this toolchain).
@@ -85,6 +87,40 @@ sub html-decode(Str $s is copy) {
     return $s;
 }
 
+# Inline HTML in prose → the markdown the app renders: <a href> becomes
+# [text](url) (tags inside the link text dropped), <strong>/<b> becomes **…**,
+# <code> becomes `…`, <sup>/<sub> become Unicode scripts where they can, and
+# <span> tags (there only to stop the site turning -- into a dash) go.
+# Inline code spans are matched first and kept as they are, so `$m<a><b>`
+# stays literal. Runs before html-decode, so an escaped &lt;a href stays text.
+sub inline-html(Str $s) {
+    $s.subst(/ $<code>=[ '`' <-[`]>+ '`' ]
+             | '<a' \s <-[>]>*? 'href="' $<href>=[<-["]>+] '"' <-[>]>* '>' $<text>=[.*?] '</a>'
+             | '<strong>' $<bold>=[.*?] '</strong>'
+             | '<b>' $<bold>=[.*?] '</b>'
+             | '<code>' $<tt>=[.*?] '</code>'
+             | '<sup>' $<sup>=[.*?] '</sup>'
+             | '<sub>' $<sub>=[.*?] '</sub>'
+             | '<' '/'? 'span' <-[>]>* '>' /, -> $m {
+           $m<code>.defined ?? ~$m
+        !! $m<href>.defined ?? '[' ~ (~$m<text>).subst(/ '<' '/'? \w+ <-[>]>* '>' /, '', :g) ~ '](' ~ $m<href> ~ ')'
+        !! $m<bold>.defined ?? '**' ~ $m<bold> ~ '**'
+        !! $m<tt>.defined   ?? '`' ~ $m<tt> ~ '`'
+        !! $m<sup>.defined  ?? scripted(~$m<sup>, '0123456789+-=()n', '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ')
+        !! $m<sub>.defined  ?? scripted(~$m<sub>, '0123456789+-=()aehklmnopstx', '₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕₖₗₘₙₒₚₛₜₓ')
+        !! ''
+    }, :g);
+}
+
+# F<sub>n-1</sub> → Fₙ₋₁ when every character has a Unicode form; otherwise
+# (the "st" of 1<sup>st</sup>) the text stays as it is.
+sub scripted(Str $s, Str $from, Str $to) {
+    $s.comb.first({ !$from.contains($_) }).defined ?? $s !! $s.trans($from => $to)
+}
+
+# Text of a prose block (paragraph, heading, tip, list item).
+sub prose(Str $s) { html-decode(inline-html($s)) }
+
 # Strip Liquid tags, YAML frontmatter, HTML noise; return the markdown body.
 sub clean-markdown(Str $raw is copy) {
     # YAML frontmatter
@@ -110,6 +146,11 @@ sub clean-markdown(Str $raw is copy) {
     $raw .= subst(/ '{:' <-[}]>* '}' /, '', :g);
     # <style>…</style> blocks (only the About page has one)
     $raw .= subst(/ '<style' .*? '</style>' /, '', :g);
+    # <script>…</script> (a quiz widget setting on one page)
+    $raw .= subst(/ '<script' .*? '</script>' /, '', :g);
+    # Lines that are only a <div …> or </div> (a styled aside on one page);
+    # the markdown between them stays.
+    $raw .= subst(/ ^^ \h* '<' '/'? 'div' <-[>]>* '>' \h* $$ /, '', :g);
     # HTML comments
     $raw .= subst(/ '<!--' .*? '-->' /, '', :g);
     # Trailing manual "Course navigation" section (About page only)
@@ -143,17 +184,34 @@ sub block-start(Str $l) returns Bool {
     return True if $l ~~ / ^ \s* <[-*]> \s /;
     return True if $l ~~ / ^ \s* \d+ '.' \s /;
     return True if $l ~~ / ^ \s* '|' /;
+    return True if $l ~~ / ^ \s* [ '<div' <-[>]>* '>' \s* ]? '<img' \s /;
     return False;
 }
 
-sub parse-blocks(Str $body) returns Array {
+# Copy a course image into assets/images/ — one flat folder, as Flutter asset
+# folders do not recurse — and describe it. The style's height in em or width
+# in px is kept, so formulas stay text-sized.
+sub image-block(IO::Path $dir, Str $src, Str $attrs) {
+    my $file = $dir.add($src).resolve;
+    die "Image not found: $file" unless $file.e;
+    my $name = $file.relative($ROOT.resolve).subst('/', '-', :g);
+    $IMAGES.mkdir;
+    $file.copy($IMAGES.add($name));
+    my %b = t => 'img', v => "assets/images/$name";
+    %b<h> = +$0 if $attrs ~~ / 'height:' \s* (\d+ ['.' \d+]?) 'em' /;
+    %b<w> = +$0 if $attrs ~~ / 'width:' \s* (\d+) 'px' /;
+    return %b;
+}
+
+# $dir is the folder of the page's index.md, which image paths are relative to.
+sub parse-blocks(Str $body, IO::Path :$dir) returns Array {
     my @lines = $body.lines;
     my @blocks;
     my $i = 0;
 
     sub push-para(@buf) {
         return unless @buf;
-        my $text = html-decode(@buf.join(' ').trim);
+        my $text = prose(@buf.join(' ').trim);
         @blocks.push({ t => 'p', v => $text }) if $text;
     }
 
@@ -188,7 +246,7 @@ sub parse-blocks(Str $body) returns Array {
         # Heading (## … ######)
         if $line ~~ / ^ ('#' '#'+) \s+ (.*) $ / {
             my $level = min($0.Str.chars, 4);
-            @blocks.push({ t => 'h', level => $level, v => html-decode(~$1).trim });
+            @blocks.push({ t => 'h', level => $level, v => prose(~$1).trim });
             $i++;
             next;
         }
@@ -200,7 +258,7 @@ sub parse-blocks(Str $body) returns Array {
                 @quote.push(~$0);
                 $i++;
             }
-            my $text = html-decode(@quote.join(' ').trim);
+            my $text = prose(@quote.join(' ').trim);
             @blocks.push({ t => 'tip', v => $text }) if $text;
             next;
         }
@@ -209,7 +267,9 @@ sub parse-blocks(Str $body) returns Array {
         if $line ~~ / ^ \s* <[-*]> \s+ (.+) $ / {
             my @items;
             while $i < @lines.elems && @lines[$i] ~~ / ^ \s* <[-*]> \s+ (.+) $ / {
-                @items.push(html-decode(~$0).trim);
+                # The course site hides list bullets (ul li { list-style-type: none }),
+                # so some lists mark items with "— "; the app draws its own bullet.
+                @items.push(prose(~$0).trim.subst(/ ^ '—' \s+ /, ''));
                 $i++;
             }
             @blocks.push({ t => 'ul', items => @items });
@@ -220,10 +280,17 @@ sub parse-blocks(Str $body) returns Array {
         if $line ~~ / ^ \s* \d+ '.' \s+ (.+) $ / {
             my @items;
             while $i < @lines.elems && @lines[$i] ~~ / ^ \s* \d+ '.' \s+ (.+) $ / {
-                @items.push(html-decode(~$0).trim);
+                @items.push(prose(~$0).trim);
                 $i++;
             }
             @blocks.push({ t => 'ol', items => @items });
+            next;
+        }
+
+        # An image on a line of its own, possibly in a <div class="formula">
+        if $dir && $line ~~ / ^ \s* [ '<div' <-[>]>* '>' \s* ]? '<img' \s <-[>]>*? 'src="' $<src>=[<-["]>+] '"' $<attrs>=[<-[>]>*] '>' \s* [ '</div>' \s* ]? $ / {
+            @blocks.push(image-block($dir, ~$<src>, ~$<attrs>));
+            $i++;
             next;
         }
 
@@ -257,12 +324,12 @@ sub parse-blocks(Str $body) returns Array {
 sub page-blocks(Str $url) returns Array {
     my $path = $ROOT.add("$url/index.md");
     return [] unless $path.e;
-    return parse-blocks(clean-markdown($path.slurp));
+    return parse-blocks(clean-markdown($path.slurp), :dir($path.parent));
 }
 
 # Plain-text flattening of blocks, for the search index.
 sub blocks-text(@blocks) {
-    @blocks.map(-> $b {
+    @blocks.grep(*<t> ne 'img').map(-> $b {
         ($b<v> // ''), |($b<items> // []).flat
     }).flat.join(' ');
 }
@@ -283,6 +350,16 @@ sub parse-quiz(Str $url, Str $title) {
     $raw .= subst(/ ^ '---' \n .*? \n '---' \n /, '');   # frontmatter
     $raw .= subst(/ '{%' .*? '%}' /, '', :g);            # liquid (keep {: markers)
 
+    # The site keeps <div class="extended-explanation"> hidden until the answer
+    # is checked, and the app shows it then too. Its <br/>s break paragraphs.
+    my @explanation;
+    $raw .= subst(/ '<div class="extended-explanation">' (.*?) '</div>' /, -> $m {
+        @explanation = parse-blocks(
+            clean-markdown((~$m[0]).subst(/ '<br' \s* '/'? '>' /, "\n\n", :g)),
+            :dir($path.parent));
+        ''
+    });
+
     # --- Standard multiple-choice ---------------------------------------
     if $raw ~~ / '{:.quiz}' / {
         my ($prompt-part, $answers-part) = $raw.split(/'{:.quiz}'/, 2);
@@ -290,17 +367,18 @@ sub parse-quiz(Str $url, Str $title) {
         for $answers-part.lines -> $line {
             next unless $line ~~ / ^ \s* (<[01]>) \s* '|' \s* (.*) $ /;
             my @parts = (~$1).split(/\s* '|' \s*/);
-            my $text  = html-decode(@parts[0].trim);
-            my $why   = @parts[1].defined ?? html-decode(@parts[1..*].join(' | ').trim) !! Nil;
+            my $text  = prose(@parts[0].trim);
+            my $why   = @parts[1].defined ?? prose(@parts[1..*].join(' | ').trim) !! Nil;
             @options.push({ text => $text, ok => (~$0 eq '1'), ($why ?? (why => $why) !! Empty) });
         }
         return Nil unless @options;
         return {
             kind    => 'choice',
             title   => $title,
-            prompt  => parse-blocks(clean-markdown($prompt-part // '')),
+            prompt  => parse-blocks(clean-markdown($prompt-part // ''), :dir($path.parent)),
             options => @options,
             multi   => @options.grep(*<ok>).elems > 1,
+            (@explanation ?? (explanation => @explanation) !! Empty),
         };
     }
 
@@ -309,16 +387,20 @@ sub parse-quiz(Str $url, Str $title) {
     my @prompt-lines;
     my @rows;
     my $answer-mode = False;
+    my $section-rows = 0;
     for $raw.lines -> $line {
-        if $line ~~ / ^ \s* '{:.quiz' / { $answer-mode = True; next; }
+        if $line ~~ / ^ \s* '{:.quiz' / { $answer-mode = True; $section-rows = 0; next; }
+        # A blank line ends the rows, but not one straight after the marker.
+        next if $answer-mode && !$section-rows && $line ~~ / ^ \s* $ /;
         if $line ~~ / ^ \s* $ /        { $answer-mode = False; @prompt-lines.push(''); next; }
         if $answer-mode {
             my @parts = $line.split(/\s* '|' \s*/);
             next unless @parts;
-            my $a    = blank-fill(html-decode(@parts[0].trim));
-            my $q    = @parts[1].defined ?? blank-fill(html-decode(@parts[1].trim)) !! '';
-            my $why  = @parts[2].defined ?? html-decode(@parts[2..*].join(' | ').trim) !! Nil;
+            my $a    = blank-fill(prose(@parts[0].trim));
+            my $q    = @parts[1].defined ?? blank-fill(prose(@parts[1].trim)) !! '';
+            my $why  = @parts[2].defined ?? prose(@parts[2..*].join(' | ').trim) !! Nil;
             @rows.push({ q => $q, a => $a, ($why ?? (why => $why) !! Empty) });
+            $section-rows++;
         }
         else {
             @prompt-lines.push($line);
@@ -328,8 +410,9 @@ sub parse-quiz(Str $url, Str $title) {
     return {
         kind   => 'reveal',
         title  => $title,
-        prompt => parse-blocks(clean-markdown(@prompt-lines.join("\n"))),
+        prompt => parse-blocks(clean-markdown(@prompt-lines.join("\n")), :dir($path.parent)),
         rows   => @rows,
+        (@explanation ?? (explanation => @explanation) !! Empty),
     };
 }
 
@@ -350,7 +433,7 @@ sub parse-exercise(Str $url, Str $title) {
     if $prompt-path.e {
         my $raw = clean-markdown($prompt-path.slurp);
         $raw .= subst(/ \n '## Solution' .* $ /, '');   # drop solution pointer
-        @prompt = parse-blocks($raw);
+        @prompt = parse-blocks($raw, :dir($prompt-path.parent));
     }
 
     # Solution: separate page; drop the 🦋 "source code" GitHub link line.
@@ -359,7 +442,7 @@ sub parse-exercise(Str $url, Str $title) {
     if $sol-path.e {
         my $raw = clean-markdown($sol-path.slurp);
         $raw = $raw.lines.grep({ $_ !~~ / '🦋' / }).join("\n");
-        @solution = parse-blocks($raw);
+        @solution = parse-blocks($raw, :dir($sol-path.parent));
     }
 
     return {

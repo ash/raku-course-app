@@ -117,7 +117,22 @@ class _QuizPlayerScreenState extends State<QuizPlayerScreen> {
                 ),
               ),
             ),
+      if (_checked && quiz.explanation.isNotEmpty) _explanation(),
     ];
+  }
+
+  /// The course's extended explanation, shown once the answer is known.
+  Widget _explanation() {
+    final p = context.palette;
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(
+        color: p.surface2,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: BlockList(blocks: quiz.explanation, accent: widget.accent),
+    );
   }
 
   Widget _optionTile(int i) {
@@ -336,6 +351,7 @@ class _QuizPlayerScreenState extends State<QuizPlayerScreen> {
             ),
           ),
         ),
+      if (_revealed && quiz.explanation.isNotEmpty) _explanation(),
       const SizedBox(height: 8),
       SizedBox(
         width: double.infinity,

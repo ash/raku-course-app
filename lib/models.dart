@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 /// One block inside a lesson / quiz prompt / exercise body.
 ///
 /// type: 'p' | 'h' | 'code' | 'codeOutput' | 'output' | 'ul' | 'ol' | 'tip'
+/// | 'img' (value is the asset path)
 class Block {
   final String type;
   final String value;
@@ -14,6 +15,8 @@ class Block {
   final bool runnable;
   final int? level; // headings (2..4)
   final List<String> items; // ul / ol
+  final double? heightEm; // img: the course's height, in em
+  final double? widthPx; // img: the course's width, in px
 
   const Block({
     required this.type,
@@ -22,6 +25,8 @@ class Block {
     this.level,
     this.items = const [],
     this.runnable = false,
+    this.heightEm,
+    this.widthPx,
   });
 
   bool get isRaku => type == 'code' && (lang == null || lang == 'raku');
@@ -33,6 +38,8 @@ class Block {
     level: j['level'] as int?,
     items: (j['items'] as List?)?.cast<String>() ?? const [],
     runnable: (j['run'] ?? false) as bool,
+    heightEm: (j['h'] as num?)?.toDouble(),
+    widthPx: (j['w'] as num?)?.toDouble(),
   );
 }
 
@@ -80,6 +87,9 @@ class Quiz {
   final List<QuizRow> rows;
   final bool multiSelect;
 
+  /// Shown once the answer is checked or revealed, as on the course site.
+  final List<Block> explanation;
+
   const Quiz({
     required this.kind,
     required this.title,
@@ -87,6 +97,7 @@ class Quiz {
     required this.options,
     required this.rows,
     required this.multiSelect,
+    this.explanation = const [],
   });
 
   bool get isChoice => kind == 'choice';
@@ -102,6 +113,7 @@ class Quiz {
         .map((r) => QuizRow.fromJson(r))
         .toList(),
     multiSelect: (j['multi'] ?? false) as bool,
+    explanation: _blocks(j['explanation']),
   );
 }
 

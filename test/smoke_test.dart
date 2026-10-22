@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Page;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,6 +44,70 @@ void main() {
     for (var i = 0; i < course.pages.length; i++) {
       expect(course.pages[i].order, i);
     }
+  });
+
+  test('text has no raw HTML and lists no dash markers', () {
+    // ash/raku-course#63 and its kin: course HTML shown as source, and "— "
+    // drawn after the app's own bullet. Quiz rows are often bare Raku, hence
+    // the narrow tag list (%h<b> is code, <b> on its own is not).
+    final blocks = [
+      for (final p in course.pages) ...[
+        ...p.blocks,
+        for (final e in p.exercises) ...[...e.prompt, ...e.solution],
+        for (final q in p.quizzes) ...[...q.prompt, ...q.explanation],
+      ],
+    ];
+    final texts = [
+      for (final b in blocks)
+        if (const ['p', 'h', 'tip', 'ul', 'ol'].contains(b.type)) ...[
+          b.value,
+          ...b.items,
+        ],
+      for (final p in course.pages)
+        for (final q in p.quizzes) ...[
+          for (final o in q.options) ...[o.text, if (o.why != null) o.why!],
+          for (final r in q.rows) ...[
+            r.question,
+            r.answer,
+            if (r.why != null) r.why!,
+          ],
+        ],
+    ];
+    final html = RegExp(
+      r'<a\s[^>]*href=|</a>|</?(b|code|strong|sub|sup|script|style)>'
+      r'|</?(span|div|p|img|br)\b[^>]*>',
+    );
+    final codeSpan = RegExp(r'`[^`]+`');
+    for (final text in texts) {
+      expect(text.replaceAll(codeSpan, ''), isNot(contains(html)));
+    }
+    for (final b in blocks.where((b) => b.type == 'ul')) {
+      for (final item in b.items) {
+        expect(item, isNot(startsWith('—')));
+      }
+    }
+  });
+
+  testWidgets('course images are bundled and render', (tester) async {
+    final images = [
+      for (final p in course.pages)
+        for (final e in p.exercises)
+          for (final b in [...e.prompt, ...e.solution])
+            if (b.type == 'img') b,
+    ];
+    expect(images.length, greaterThanOrEqualTo(4));
+    for (final b in images) {
+      expect((await rootBundle.load(b.value)).lengthInBytes, greaterThan(0));
+    }
+    final ex = course.pages
+        .expand((p) => p.exercises)
+        .firstWhere((e) => e.prompt.any((b) => b.type == 'img'));
+    await tester.pumpWidget(
+      host(ExerciseScreen(exercise: ex, accent: AppColors.rakuAccent)),
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(Image), findsWidgets);
   });
 
   testWidgets('reader renders a lesson with quizzes/exercises', (tester) async {
@@ -97,6 +162,42 @@ void main() {
     expect(tester.takeException(), isNull);
     // After checking, a result string appears in the bottom bar.
     expect(find.text('Check answer'), findsNothing);
+  });
+
+  testWidgets('quiz explanation appears only after checking', (tester) async {
+    // The explanation's opening words, before any inline markup.
+    String opening(Quiz q) =>
+        q.explanation.first.value.split(RegExp(r'[`*\[]')).first.trim();
+    final quiz = course.pages
+        .expand((p) => p.quizzes)
+        .firstWhere(
+          (q) =>
+              q.isChoice &&
+              !q.multiSelect &&
+              q.explanation.isNotEmpty &&
+              q.explanation.first.type == 'p' &&
+              opening(q).length >= 20,
+        );
+    final words = opening(quiz);
+    await tester.pumpWidget(
+      host(
+        QuizPlayerScreen(
+          quiz: quiz,
+          accent: AppColors.rakuAccent,
+          progress: progress,
+          quizId: 'x::${quiz.title}',
+        ),
+      ),
+    );
+    await tester.pump();
+    final explanation = find.textContaining(words, findRichText: true);
+    expect(explanation, findsNothing);
+    await tester.tap(find.byIcon(Icons.radio_button_unchecked_rounded).first);
+    await tester.pump();
+    await tester.tap(find.text('Check answer'));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(explanation, findsOneWidget);
   });
 
   testWidgets('reveal quiz renders and toggles answers', (tester) async {

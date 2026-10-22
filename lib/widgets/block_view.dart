@@ -106,6 +106,27 @@ class BlockView extends StatelessWidget {
             style: TextStyle(color: p.text, fontSize: 14.5, height: 1.5),
           ),
         );
+      case 'img':
+        // The course's images (formulas, a graph) are black on white or on
+        // transparency, so they sit on a white card in both themes.
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Image.asset(
+                block.value,
+                height: block.heightEm == null ? null : block.heightEm! * 16,
+                width: block.widthPx,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        );
       case 'p':
       default:
         return Padding(

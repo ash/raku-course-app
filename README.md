@@ -24,7 +24,9 @@ raku-course/  ──(tool/sync.raku)──►  assets/data/content.json  ──�
   `content.json` (blocks, quizzes, exercises, a flat ordered "spine", and a
   precomputed search index). It also runs every Raku block once with
   `rakupp` and marks the ones that run on their own (`run: true`), which are
-  the ones that get a Run button.
+  the ones that get a Run button. Course images (a few formulas and a graph)
+  are copied into `assets/images/`, and each quiz's extended explanation is
+  kept apart so the app shows it only after the answer.
 * **`tool/examples.raku`** — the Playground's example programs, taken from
   Raku++'s `examples/` at the engine's tag.
 * **`packages/raku_engine`** — the engine as an FFI plugin; `lib/run_session.dart`,
