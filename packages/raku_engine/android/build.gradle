@@ -1,0 +1,27 @@
+// The Raku++ engine for Android: a prebuilt librakuengine.so per ABI, made by
+// engine/build-android.sh in the app repository. Nothing is compiled here;
+// the Android Gradle Plugin comes from the app that includes this plugin.
+group = "online.deepsoft.raku_engine"
+version = "0.1.0"
+
+apply plugin: "com.android.library"
+
+android {
+    namespace = "online.deepsoft.raku_engine"
+    compileSdk = 36
+
+    defaultConfig {
+        minSdk = 24
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ["src/main/jniLibs"]
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}

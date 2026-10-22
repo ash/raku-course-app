@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<!--
+  Learn Raku: the App Store "universal creative asset", one image for the
+  product page header and the search results. Rendered at 5244 × 2950 (16:9);
+  the header shows a 21:9 band of it (y 352–2598) and search results a 3:2
+  column (x 409–4835), so everything that matters sits inside both.
+  Render: appstore/marketing/render.sh
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 5244px; height: 2950px; overflow: hidden; position: relative;
+    background:
+      radial-gradient(1500px 1100px at 3500px 1380px, rgba(230, 48, 138, .30), transparent 70%),
+      radial-gradient(1400px 1000px at 1200px 900px, rgba(58, 120, 240, .26), transparent 70%),
+      linear-gradient(160deg, #15122a 0%, #0e0d12 55%, #120d18 100%);
+    font-family: -apple-system, "SF Pro Display", system-ui, sans-serif;
+    color: #ececf1;
+  }
+  .headline {
+    position: absolute; left: 760px; top: 760px; width: 1700px;
+    font-size: 330px; font-weight: 800; line-height: 1.02; letter-spacing: -6px;
+  }
+  .headline .run { color: #e6308a; }
+  .sub {
+    position: absolute; left: 768px; top: 1500px; width: 1760px;
+    font-size: 104px; line-height: 1.32; color: #a9a3b8; font-weight: 500;
+  }
+  .card {
+    position: absolute; left: 2560px; top: 620px; width: 2080px;
+    background: #14121a; border: 6px solid #302c3a; border-radius: 76px;
+    box-shadow: 0 60px 160px rgba(0, 0, 0, .55);
+    font-family: Menlo, "SF Mono", monospace;
+  }
+  .bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 70px 80px 10px 104px;
+  }
+  .label {
+    color: #9a93aa; font-family: -apple-system, system-ui, sans-serif;
+    font-size: 58px; font-weight: 700; letter-spacing: 9px;
+  }
+  .label .glyph { letter-spacing: 0; margin-right: 26px; }
+  .pill {
+    background: #e6308a; color: #fff; border-radius: 90px;
+    padding: 26px 70px 26px 56px; font-size: 76px; font-weight: 600;
+    font-family: -apple-system, system-ui, sans-serif;
+    display: flex; align-items: center; gap: 30px;
+  }
+  .pill .tri {
+    width: 0; height: 0; border-left: 50px solid #fff;
+    border-top: 30px solid transparent; border-bottom: 30px solid transparent;
+  }
+  pre {
+    margin: 0; padding: 50px 104px 70px; font: inherit;
+    font-size: 108px; line-height: 1.55; color: #ececf1; white-space: pre;
+  }
+  .k { color: #c58af0; font-weight: 700; }
+  .n { color: #f0a45a; }
+  .s { color: #9be3a4; }
+  .out { border-top: 5px solid #302c3a; padding: 56px 104px 0; }
+  .out pre { padding: 0; color: #8fe3d0; }
+  .status {
+    padding: 40px 104px 70px; color: #9a93aa; font-size: 64px;
+  }
+</style>
+</head>
+<body>
+  <div class="headline">Read it.<br><span class="run">Run it.</span></div>
+  <div class="sub">The Course of Raku, offline —<br>with a Raku engine on board.</div>
+
+  <div class="card">
+    <div class="bar">
+      <span class="label"><span class="glyph">‹›</span>RAKU</span>
+      <span class="pill"><span class="tri"></span>Run</span>
+    </div>
+<pre><span class="k">say</span> <span class="n">0.1</span> + <span class="n">0.2</span> == <span class="n">0.3</span>;
+<span class="k">say</span> (^<span class="n">20</span>).grep(*.is-prime);
+<span class="k">say</span> <span class="s">'Raku'</span>.flip;</pre>
+    <div class="out">
+<pre>True
+(2 3 5 7 11 13 17 19)
+ukaR</pre>
+    </div>
+    <div class="status">exit 0 · 4 ms</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,25 @@
+Learn Raku brings the complete Course of Raku by Andrew Shitov to your Android phone and tablet — a full, structured course on the Raku programming language that works entirely offline. And the examples run, right on your device.
+
+Whether you are new to programming or coming from Perl, Python, or another language, Learn Raku takes you from the essentials all the way to advanced topics, with real code examples, interactive quizzes, and hands-on exercises every step of the way.
+
+RUN THE CODE, NOT JUST READ IT
+The app carries Raku++, a complete implementation of the Raku language. Tap Run on an example and see what it prints, right under the code — and when a program asks for input, type your answer. Change it in the Playground and run it again — no internet connection, no server, no setup.
+
+WHAT'S INSIDE
+• 399 lessons across six parts — from the basics of variables, types, and control flow, through objects, I/O and exceptions, regexes and grammars, and functional, concurrent, reactive, and web programming.
+• Over a thousand runnable examples — tap Run to see the output, or open any example in the Playground to experiment.
+• The Playground — write your own Raku programs with syntax highlighting, a symbol bar for the characters Raku needs, program input, and 22 example programs to explore.
+• 216 interactive quizzes — answer multiple-choice questions and get instant feedback, with an explanation for every option.
+• 396 exercises with worked solutions — solve each one in the Playground, then reveal the solution to compare.
+• The Final Test — a hundred questions across the whole course, each checked the moment you answer, with a full review at the end.
+• Full-course search — jump to any lesson, quiz, or exercise instantly.
+• Progress tracking — lessons are marked as you go, and a Continue card takes you back to where you left off.
+• Light and dark themes — choose System, Light, or Dark.
+
+FULLY OFFLINE, PRIVATE BY DESIGN
+Everything is bundled with the app. There is no account to create, no ads, and no tracking. The app collects no personal data — your progress and your programs stay on your device.
+
+ABOUT RAKU
+Raku (formerly Perl 6) is an expressive, multi-paradigm programming language with first-class support for object-oriented, functional, and concurrent programming, plus one of the most powerful grammar and regular-expression engines of any language. Learn Raku is a great way to learn it at your own pace, wherever you are.
+
+Course content and the Raku++ engine by Andrew Shitov. Published by DeepSoft.

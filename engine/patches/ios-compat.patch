@@ -1,0 +1,112 @@
+diff -ruN a/src/DataRandom.cpp b/src/DataRandom.cpp
+--- a/src/DataRandom.cpp	2026-10-17 22:10:12.235091237 +0300
++++ b/src/DataRandom.cpp	2026-10-17 22:10:29.116748978 +0300
+@@ -9,6 +9,15 @@
+ #include <string>
+ #include <vector>
+ 
++// RAKUPP_IOS: an iOS (or simulator) build, where an app may not run a
++// compiler, map executable memory, or call getentropy.
++#if defined(__APPLE__)
++#  include <TargetConditionals.h>
++#  if TARGET_OS_IPHONE && !defined(RAKUPP_IOS)
++#    define RAKUPP_IOS 1
++#  endif
++#endif
++
+ #if defined(_WIN32)
+ #  include <windows.h>
+ #  include <bcrypt.h>
+@@ -16,6 +25,7 @@
+ #  include <sys/syscall.h>
+ #  include <unistd.h>
+ #else
++#  include <stdlib.h>
+ #  include <unistd.h>
+ // getentropy(2) is declared in <sys/random.h> on macOS and FreeBSD, but OpenBSD
+ // puts it in <unistd.h> and ships no <sys/random.h> at all — including that
+@@ -53,6 +63,10 @@
+         break;
+     }
+     if (got == n) return true;
++#  elif RAKUPP_IOS
++    // iOS has no getentropy in its SDK; arc4random_buf is the system CSPRNG.
++    arc4random_buf(p, n);
++    return true;
+ #  else
+     // getentropy(2) is the macOS and BSD spelling, and takes at most 256 bytes
+     // a call — so the loop is the interface, not a retry.
+diff -ruN a/src/Jit.cpp b/src/Jit.cpp
+--- a/src/Jit.cpp	2026-10-17 22:10:12.230146006 +0300
++++ b/src/Jit.cpp	2026-10-17 22:11:20.719671717 +0300
+@@ -43,6 +43,15 @@
+ #include <thread>
+ #include <vector>
+ 
++// RAKUPP_IOS: an iOS (or simulator) build, where an app may not run a
++// compiler, map executable memory, or call getentropy.
++#if defined(__APPLE__)
++#  include <TargetConditionals.h>
++#  if TARGET_OS_IPHONE && !defined(RAKUPP_IOS)
++#    define RAKUPP_IOS 1
++#  endif
++#endif
++
+ namespace rakupp {
+ namespace jit {
+ 
+@@ -620,12 +629,17 @@
+ }
+ 
+ int run(const std::string& cmd) {
++#if RAKUPP_IOS
++    (void)cmd;
++    return -1;   // no system(), and no compiler to call: --jit has nothing to do on iOS
++#else
+     if (g_opt.verbose) return std::system(cmd.c_str());
+     // The GROUP is redirected, not the last command in it. Every command here
+     // is a `&&`/`;` chain, and `a && b >/dev/null 2>&1` redirects only `b` — so
+     // the compiler's own diagnostics were reaching the user's terminal on a
+     // failed kernel, in the middle of their program's output.
+     return std::system(("{ " + cmd + " ; }" + " >/dev/null 2>&1").c_str());
++#endif
+ }
+ 
+ // What the cache key has to change with: the kernel source, the headers it is
+diff -ruN a/src/cnp/CnpEmit.cpp b/src/cnp/CnpEmit.cpp
+--- a/src/cnp/CnpEmit.cpp	2026-10-17 22:10:12.224612221 +0300
++++ b/src/cnp/CnpEmit.cpp	2026-10-17 22:10:29.115733623 +0300
+@@ -25,6 +25,15 @@
+ #include <set>
+ #include <string>
+ 
++// RAKUPP_IOS: an iOS (or simulator) build, where an app may not run a
++// compiler, map executable memory, or call getentropy.
++#if defined(__APPLE__)
++#  include <TargetConditionals.h>
++#  if TARGET_OS_IPHONE && !defined(RAKUPP_IOS)
++#    define RAKUPP_IOS 1
++#  endif
++#endif
++
+ #if defined(_WIN32)
+ #  include <windows.h>
+ #else
+@@ -134,7 +143,7 @@
+ #else
+     void* p = ::mmap(nullptr, n, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+     if (p != MAP_FAILED) return { p, n };
+-#  if defined(__APPLE__) && defined(MAP_JIT)
++#  if defined(__APPLE__) && defined(MAP_JIT) && !RAKUPP_IOS
+     p = ::mmap(nullptr, n, PROT_READ | PROT_WRITE | PROT_EXEC,
+                MAP_PRIVATE | MAP_ANON | MAP_JIT, -1, 0);
+     if (p != MAP_FAILED) { ::pthread_jit_write_protect_np(0); return { p, n }; }
+@@ -151,7 +160,7 @@
+     return true;
+ #else
+     if (::mprotect(m.p, m.n, PROT_READ | PROT_EXEC) != 0) {
+-#  if defined(__APPLE__) && defined(MAP_JIT)
++#  if defined(__APPLE__) && defined(MAP_JIT) && !RAKUPP_IOS
+         ::pthread_jit_write_protect_np(1);      // the MAP_JIT fallback took this route
+ #  else
+         return false;

@@ -1,0 +1,56 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Raku++ engine build tree (engine/build-ios.sh)
+/engine/build/
+
+# Raku++ engine binaries — built by engine/build-ios.sh and
+# engine/build-android.sh, not committed (the dSYM alone is 160 MB)
+/packages/raku_engine/ios/RakuEngine.xcframework/
+/packages/raku_engine/android/src/main/jniLibs/
+
+# App Review contact details (name, email, phone)
+/appstore/metadata/review_information/

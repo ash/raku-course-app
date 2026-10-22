@@ -1,0 +1,21 @@
+PODS:
+  - Flutter (1.0.0)
+  - raku_engine (0.1.0)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - raku_engine (from `.symlinks/plugins/raku_engine/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  raku_engine:
+    :path: ".symlinks/plugins/raku_engine/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  raku_engine: 5a6ddc05fae17838396358811876240623ca2c02
+
+PODFILE CHECKSUM: 3ba3a73b1b12adcf321a227a745625fe0888cc82
+
+COCOAPODS: 1.14.2

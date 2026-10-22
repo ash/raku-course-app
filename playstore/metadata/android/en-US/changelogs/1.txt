@@ -1,0 +1,1 @@
+First release. The complete Course of Raku by Andrew Shitov — 375 lessons across seven parts, 209 interactive quizzes, and 395 exercises with worked solutions — now offline on Android phone and tablet.

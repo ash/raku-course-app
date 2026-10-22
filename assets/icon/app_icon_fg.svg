@@ -1,0 +1,10 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- monogram scaled/centred into the adaptive-icon safe zone -->
+  <g transform="translate(512,512) scale(0.62) translate(-512,-534)">
+    <g font-family="Helvetica, Arial, sans-serif" font-weight="800"
+       font-size="430" text-anchor="middle" fill="#FFFFFF" letter-spacing="-8">
+      <text x="512" y="470">RA</text>
+      <text x="512" y="868">KU</text>
+    </g>
+  </g>
+</svg>

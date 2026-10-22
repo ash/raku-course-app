@@ -1,0 +1,1 @@
+First release. The complete Course of Raku by Andrew Shitov — 399 lessons, 216 interactive quizzes, 396 exercises with solutions and the Final Test — with a built-in Raku engine: run the examples, and write your own programs in the Playground. Fully offline on Android phone and tablet.

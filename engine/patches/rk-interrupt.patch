@@ -1,0 +1,168 @@
+diff -ruN a/include/rakupp/rakupp.h b/include/rakupp/rakupp.h
+--- a/include/rakupp/rakupp.h	2026-10-17 22:04:32.884267987 +0300
++++ b/include/rakupp/rakupp.h	2026-10-17 22:04:33.046071608 +0300
+@@ -163,6 +163,15 @@
+  * Pass NULL to restore the process's own stdin. */
+ RK_API void rk_set_input(RkInterp rk, const char* text, size_t len);
+ 
++/* Ask the evaluation running in `rk` to stop. Safe to call from ANY thread
++ * while rk_run/rk_eval is in progress — that is the point: it is how a host
++ * Stop button works. The program dies with X::AdHoc "Interrupted" at its
++ * next statement, block entry or loop iteration, and keeps dying there
++ * until the call returns, so a `try` cannot swallow it. The request is
++ * cleared when the next rk_run/rk_eval starts. A builtin that blocks
++ * (sleep, a socket read) finishes first. */
++RK_API void rk_interrupt(RkInterp rk);
++
+ /* Install a host function as a Raku sub `name` in the interpreter's mainline
+  * scope — the other direction of rk_call, and the point where an embedded
+  * language stops being a calculator. The function receives the same RkCtx an
+diff -ruN a/src/EmbedApi.cpp b/src/EmbedApi.cpp
+--- a/src/EmbedApi.cpp	2026-10-17 22:04:32.824224354 +0300
++++ b/src/EmbedApi.cpp	2026-10-17 22:04:33.047250962 +0300
+@@ -19,6 +19,7 @@
+ #include "BuiltinsShared.h" // grammarShimSource (GrammarShim.cpp, generated)
+ #include "ExtCtx.h"
+ #include "Interpreter.h"
++#include "Interrupt.h"
+ #include "Parser.h"     // ParseError
+ #include "Runtime.h"
+ #include "Sandbox.h"
+@@ -37,6 +38,12 @@
+ 
+ namespace rakupp {
+ 
++std::atomic<bool> g_interruptRequested{false};
++
++void throwInterrupted() {
++    throw RakuError{Value::typeObj("X::AdHoc"), "Interrupted"};
++}
++
+ namespace {
+ 
+ // Everything Raku prints reaches std::cout/std::cerr (Interpreter::ioEmit), so
+@@ -308,6 +315,7 @@
+     if (!rk) return RK_FATAL;
+     Interp* p = I(rk);
+     if (out) *out = nullptr;
++    g_interruptRequested.store(false);
+     // "Valid until the next rk_eval" — the host-shaped spelling of the
+     // extension rule that a handle dies with its call. rk_root is the way out.
+     p->ctx.clear();
+@@ -375,6 +383,7 @@
+     Interp* p = I(rk);
+     if (exit_code) *exit_code = 3;
+     p->ctx.clear();
++    g_interruptRequested.store(false);
+     int rc = 0;
+     // rakuppRunOn, not rakuppRun: the program runs in THIS interpreter, so a
+     // host does not silently acquire a second one — whose construction would
+@@ -413,6 +422,11 @@
+     p->oldErr = std::cerr.rdbuf(p->errBuf.get());
+ }
+ 
++void rk_interrupt(RkInterp rk) {
++    if (!rk) return;
++    g_interruptRequested.store(true);
++}
++
+ void rk_set_input(RkInterp rk, const char* text, size_t len) {
+     if (!rk) return;
+     Interp* p = I(rk);
+diff -ruN a/src/IntKernel.cpp b/src/IntKernel.cpp
+--- a/src/IntKernel.cpp	2026-10-17 22:04:32.749468130 +0300
++++ b/src/IntKernel.cpp	2026-10-17 22:04:46.627026946 +0300
+@@ -47,6 +47,7 @@
+ #include "InterpreterParts.h"
+ #include "IntOps.h"
+ #include "BuiltinsShared.h"   // graphemeCount
++#include "Interrupt.h"
+ #include <climits>
+ #include <cmath>
+ #include <cstdlib>
+@@ -1782,6 +1783,7 @@
+     const KNode* body = n->c;
+     const KFn bfn = body->fn;
+     for (int64_t i = lo; i <= hi; i++) {
++        checkInterrupt();
+         fr[n->slot] = i;
+         const int64_t v = bfn(body, fr, R);
+         if (stopped(R) && loopStop(R)) return R.ret ? v : 0;   // a `return` carries its value out
+@@ -1792,6 +1794,7 @@
+ 
+ int64_t whileFn(const KNode* n, int64_t* fr, KRun& R) {
+     for (;;) {
++        checkInterrupt();
+         const int64_t c = krun(n->a, fr, R);
+         if (R.bail || !c) break;
+         const int64_t v = krun(n->c, fr, R);
+@@ -1802,6 +1805,7 @@
+ // (a `next` goes on to the condition, as it does in the generic loop)
+ int64_t repeatFn(const KNode* n, int64_t* fr, KRun& R) {
+     for (;;) {
++        checkInterrupt();
+         const int64_t v = krun(n->c, fr, R);
+         if (stopped(R) && loopStop(R)) return R.ret ? v : 0;
+         const int64_t c = krun(n->a, fr, R);
+@@ -1834,6 +1838,7 @@
+ // a C-style loop: `next` still runs the step, as the generic loop's does
+ int64_t cloopFn(const KNode* n, int64_t* fr, KRun& R) {
+     for (;;) {
++        checkInterrupt();
+         if (n->a) {
+             const int64_t c = krun(n->a, fr, R);
+             if (R.bail || !c) break;
+diff -ruN a/src/InterpreterCore.cpp b/src/InterpreterCore.cpp
+--- a/src/InterpreterCore.cpp	2026-10-17 22:04:32.785632304 +0300
++++ b/src/InterpreterCore.cpp	2026-10-17 22:04:46.621579851 +0300
+@@ -3,6 +3,7 @@
+ // One of the parts InterpreterParts.h lists; what they share is declared there.
+ #include "InterpreterParts.h"
+ #include "AotModules.h"
++#include "Interrupt.h"
+ #include <array>   // kShape in the typed-store check; MSVC does not bring it in through the headers
+ 
+ namespace rakupp {
+@@ -1048,6 +1049,7 @@
+ }
+ 
+ Value Interpreter::execBlock(Block* b, std::shared_ptr<Env> scope, bool sink, std::unique_ptr<HandedError>* handOff) {
++    checkInterrupt();
+     // hoistNeed is -1 until the full path's first run has looked, so a block's
+     // first entry always goes the full way
+     if (!handOff && blockEntryWork(b) == 0 && b->hoistNeed == 0 && b->endsWithin.empty() &&
+@@ -1875,6 +1877,7 @@
+ }
+ 
+ Value Interpreter::exec(Stmt* s, bool sink) {
++    checkInterrupt();
+ #ifdef RAKUPP_NODE_COUNT
+     extern unsigned long long g_execStmts;
+     ++g_execStmts;
+diff -ruN a/src/Interrupt.h b/src/Interrupt.h
+--- a/src/Interrupt.h	1970-01-01 03:00:00.000000000 +0300
++++ b/src/Interrupt.h	2026-10-17 22:04:32.990927811 +0300
+@@ -0,0 +1,23 @@
++// Interrupt.h — stopping a running program from outside it (rk_interrupt).
++//
++// A host that runs user programs — a playground, a notebook, an app — needs a
++// Stop button, and rk_run had no way to end an evaluation early. This is the
++// smallest one that works: a process-wide flag the host raises, read with a
++// relaxed load at the points every long-running program passes through (each
++// statement, each block entry, each iteration of an Int loop kernel). Once
++// raised it stays raised until the next rk_run/rk_eval begins, so a `try`
++// that swallows the first X::AdHoc cannot keep the program alive: the very
++// next statement throws again.
++#pragma once
++#include <atomic>
++
++namespace rakupp {
++
++extern std::atomic<bool> g_interruptRequested;
++[[noreturn]] void throwInterrupted();
++
++inline void checkInterrupt() {
++    if (g_interruptRequested.load(std::memory_order_relaxed)) throwInterrupted();
++}
++
++} // namespace rakupp
