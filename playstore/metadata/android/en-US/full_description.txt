@@ -9,7 +9,7 @@ WHAT'S INSIDE
 • 399 lessons across six parts — from the basics of variables, types, and control flow, through objects, I/O and exceptions, regexes and grammars, and functional, concurrent, reactive, and web programming.
 • Over a thousand runnable examples — tap Run to see the output, or open any example in the Playground to experiment.
 • The Playground — write your own Raku programs with syntax highlighting, a symbol bar for the characters Raku needs, program input, and 22 example programs to explore.
-• 216 interactive quizzes — answer multiple-choice questions and get instant feedback, with an explanation for every option.
+• 217 interactive quizzes — answer multiple-choice questions and get instant feedback, with an explanation for every option.
 • 396 exercises with worked solutions — solve each one in the Playground, then reveal the solution to compare.
 • The Final Test — a hundred questions across the whole course, each checked the moment you answer, with a full review at the end.
 • Full-course search — jump to any lesson, quiz, or exercise instantly.

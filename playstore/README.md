@@ -10,7 +10,7 @@ bundled content so they stay accurate.
 |-------|-------|
 | App name | **Learn Raku** |
 | Application ID | **online.deepsoft.learnraku** (matches the iOS bundle ID) |
-| Version / build | 1.0.0 (versionCode 2) — from `pubspec.yaml` `version:` |
+| Version / build | 1.0.0 (versionCode 3) — from `pubspec.yaml` `version:` |
 | Android | 7.0+ (minSdk 24), targetSdk 36; native engine for arm64-v8a, armeabi-v7a, x86_64, 16 KB-page aligned |
 | Form factors | Phone + tablet (Flutter universal) |
 | Category | Education |

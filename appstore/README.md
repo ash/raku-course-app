@@ -10,7 +10,7 @@ so the numbers match the bundled content.
 |-------|-------|
 | App name | **Learn Raku** |
 | Bundle ID | **online.deepsoft.learnraku** |
-| Version / build | 1.0.0 (2) — see `pubspec.yaml` `version:`. Build 1 was rejected (blank screen at launch); build 2 is the resubmission |
+| Version / build | 1.0.0 (3) — see `pubspec.yaml` `version:`. Build 1 was rejected (blank screen at launch); build 3 is the resubmission |
 | Platforms | iPhone + iPad (universal; `TARGETED_DEVICE_FAMILY = 1,2`) |
 | Primary category | Education |
 | Secondary category | Developer Tools |
