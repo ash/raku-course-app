@@ -10,7 +10,7 @@ so the numbers match the bundled content.
 |-------|-------|
 | App name | **Learn Raku** |
 | Bundle ID | **online.deepsoft.learnraku** |
-| Version / build | 1.0.0 (3) — see `pubspec.yaml` `version:`. Build 1 was rejected (blank screen at launch); build 3 is the resubmission |
+| Version / build | 1.0.1 (3) — see `pubspec.yaml` `version:`. 1.0.0 (build 2) is approved; 1.0.1 brings the rendering fixes. Build 1 was rejected (blank screen at launch) |
 | Platforms | iPhone + iPad (universal; `TARGETED_DEVICE_FAMILY = 1,2`) |
 | Primary category | Education |
 | Secondary category | Developer Tools |
@@ -30,7 +30,7 @@ metadata/
     promotional_text.txt  (≤170)
     description.txt        (≤4000)
     keywords.txt          (≤100, comma-separated)
-    release_notes.txt     "What's New" for 1.0
+    release_notes.txt     "What's New" for 1.0.1
     support_url.txt        https://deepsoft.online/support/learn-raku
     marketing_url.txt      https://deepsoft.online/mobile/learn-raku
     privacy_url.txt        https://deepsoft.online/policy/learn-raku

@@ -1,1 +1,6 @@
-First release. The complete Course of Raku by Andrew Shitov — 399 lessons, 217 interactive quizzes, 396 exercises with solutions and the Final Test — with a built-in Raku engine: run the examples, and write your own programs in the Playground. Fully offline on iPhone and iPad.
+Lessons now look the way they do on the course website:
+• Links in lessons can be tapped instead of showing up as code, and links to a part of the course open that part.
+• Italics, tables, formulas and images are shown properly.
+• Quiz explanations appear after you answer.
+• A quiz that was missing is back, making 217 in all.
+• Fixed a typo in the Fibonacci solution: the second starting value is F₁.
