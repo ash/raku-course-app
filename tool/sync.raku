@@ -47,13 +47,22 @@ sub to-json($v) {
         when Associative   {
             '{' ~ $v.kv.map(-> $k, $val {
                 # Titles are shown as plain text in the app, where the
-                # course's `code` backticks would appear literally.
-                my $out = $k eq 'title' | 'longTitle' && $val ~~ Str ?? $val.subst('`', '', :g) !! $val;
+                # course's `code` backticks and _italic_ markers would
+                # appear literally.
+                my $out = $k eq 'title' | 'longTitle' && $val ~~ Str ?? plain-title($val) !! $val;
                 json-str(~$k) ~ ':' ~ to-json($out)
             }).join(',') ~ '}'
         }
         default            { json-str(~$v) }
     }
+}
+
+# A marker counts only after a space or the start and before a space or the
+# end, so "@*ARGS" keeps its star.
+sub plain-title(Str $t) {
+    $t.subst('`', '', :g)
+      .subst(/ (^ | \s) '_' (<-[_\s]> <-[_]>*?) '_' <before $ | \s> /, -> $m { $m[0] ~ $m[1] }, :g)
+      .subst(/ (^ | \s) '*' (<-[*\s]> <-[*]>*?) '*' <before $ | \s> /, -> $m { $m[0] ~ $m[1] }, :g)
 }
 
 sub json-str(Str $s) {
@@ -294,9 +303,23 @@ sub parse-blocks(Str $body, IO::Path :$dir) returns Array {
             next;
         }
 
-        # Markdown table → skip (only the About page has one)
+        # Markdown table (the About page's contents, a supplies walk-through):
+        # rows of cells, the
+        # first being the header, and each column's alignment taken from the
+        # |---:| separator line ('l', 'r' or 'c').
         if $line ~~ / ^ \s* '|' / {
-            $i++;
+            my @rows;
+            while $i < @lines.elems && @lines[$i] ~~ / ^ \s* '|' / {
+                my $row = @lines[$i].trim.subst(/ ^ '|' /, '').subst(/ '|' $ /, '');
+                @rows.push([ $row.split('|').map({ prose(.trim) }) ]);
+                $i++;
+            }
+            my @align;
+            if @rows > 1 && !@rows[1].grep({ $_ !~~ / ^ ':'? '-'+ ':'? $ / }) {
+                @align = @rows[1].map({ .ends-with(':') ?? (.starts-with(':') ?? 'c' !! 'r') !! 'l' });
+                @rows = (@rows[0], |@rows[2..*]);
+            }
+            @blocks.push({ t => 'table', rows => @rows, (@align ?? (align => @align) !! Empty) });
             next;
         }
 
@@ -330,7 +353,7 @@ sub page-blocks(Str $url) returns Array {
 # Plain-text flattening of blocks, for the search index.
 sub blocks-text(@blocks) {
     @blocks.grep(*<t> ne 'img').map(-> $b {
-        ($b<v> // ''), |($b<items> // []).flat
+        ($b<v> // ''), |($b<items> // []).flat, |($b<rows> // []).map(*.flat).flat
     }).flat.join(' ');
 }
 

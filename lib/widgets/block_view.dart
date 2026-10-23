@@ -42,7 +42,7 @@ class BlockView extends StatelessWidget {
         final level = block.level ?? 2;
         return Padding(
           padding: EdgeInsets.only(top: level <= 2 ? 18 : 12, bottom: 4),
-          child: Text(
+          child: RichParagraph(
             block.value,
             style: TextStyle(
               fontSize: level <= 2 ? 18 : 15.5,
@@ -125,6 +125,59 @@ class BlockView extends StatelessWidget {
                 fit: BoxFit.contain,
               ),
             ),
+          ),
+        );
+      case 'table':
+        // As on the course site: the first column takes the spare width and
+        // wraps, the others fit their content; the header row is bold.
+        Alignment cellAlign(int c) => switch (c < block.align.length
+            ? block.align[c]
+            : 'l') {
+          'r' => Alignment.centerRight,
+          'c' => Alignment.center,
+          _ => Alignment.centerLeft,
+        };
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Table(
+            columnWidths: const {0: FlexColumnWidth()},
+            defaultColumnWidth: const IntrinsicColumnWidth(),
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            border: TableBorder(
+              horizontalInside: BorderSide(color: p.stroke),
+            ),
+            children: [
+              for (var r = 0; r < block.rows.length; r++)
+                TableRow(
+                  decoration: r == 0
+                      ? BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: accent, width: 1.5),
+                          ),
+                        )
+                      : null,
+                  children: [
+                    for (var c = 0; c < block.rows[r].length; c++)
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(c == 0 ? 0 : 12, 8, 0, 8),
+                        child: Align(
+                          alignment: cellAlign(c),
+                          child: RichParagraph(
+                            block.rows[r][c],
+                            style: TextStyle(
+                              color: p.text,
+                              fontSize: 14.5,
+                              height: 1.4,
+                              fontWeight: r == 0
+                                  ? FontWeight.w700
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+            ],
           ),
         );
       case 'p':

@@ -7,6 +7,7 @@ import '../widgets/block_view.dart';
 import '../widgets/rich_text_span.dart';
 import 'exercise_screen.dart';
 import 'final_test_screen.dart';
+import 'part_browser_screen.dart';
 import 'quiz_player_screen.dart';
 
 /// Open a page in the reader (replacing the current reader if pushed from one).
@@ -85,9 +86,25 @@ class _ReaderScreenState extends State<ReaderScreen> {
       return;
     }
     final target = _resolveInternal(h);
+    // A part's own URL (/essentials) is not a page; it opens the part.
+    final segs = h.split('#').first.split('/').where((s) => s.isNotEmpty);
+    final part = segs.length == 1
+        ? widget.course.parts.where((p) => p.slug == segs.first).firstOrNull
+        : null;
     if (target != null) {
       // Push a new reader so the app bar back button returns to this page.
       openReader(context, widget.course, widget.progress, target);
+    } else if (part != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PartBrowserScreen(
+            course: widget.course,
+            part: part,
+            progress: widget.progress,
+          ),
+        ),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

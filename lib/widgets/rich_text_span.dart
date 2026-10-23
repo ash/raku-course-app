@@ -26,9 +26,14 @@ class LinkScope extends InheritedWidget {
       basePageId != old.basePageId || onTap != old.onTap;
 }
 
-/// Parses a small subset of inline markdown — **bold**, `code`, and
-/// [links](url) — into spans. When [recognizerFor] is supplied, link spans
-/// get a tap recognizer for the href; otherwise they are styled but inert.
+/// Parses a small subset of inline markdown — **bold**, `code`,
+/// [links](url), and *italic* / _italic_ — into spans. When [recognizerFor]
+/// is supplied, link spans get a tap recognizer for the href; otherwise they
+/// are styled but inert.
+///
+/// Italics need a space or opening punctuation before the first marker and a
+/// space or closing punctuation after the last, so `$_`, `@*ARGS`, snake_case
+/// and `2 * 3` stay as they are.
 List<InlineSpan> parseInline(
   String text,
   TextStyle base, {
@@ -38,8 +43,12 @@ List<InlineSpan> parseInline(
   GestureRecognizer? Function(String href)? recognizerFor,
 }) {
   final spans = <InlineSpan>[];
-  // bold | inline code | [text](url)
-  final pattern = RegExp(r'\*\*(.+?)\*\*|`([^`]+?)`|\[([^\]]+)\]\(([^)]+)\)');
+  // bold | inline code | [text](url) | *italic* or _italic_
+  final pattern = RegExp(
+    r'\*\*(.+?)\*\*|`([^`]+?)`|\[([^\]]+)\]\(([^)]+)\)'
+    r'|(?<=^|[\s(\[{"' "'" r'“‘—–/])([*_])(?![\s*_])([^*_`]+?)(?<![\s*_])\5'
+    r'(?=$|[\s)\]}.,;:!?"' "'" r'”’—–/])',
+  );
   int last = 0;
   for (final m in pattern.allMatches(text)) {
     if (m.start > last) {
@@ -75,6 +84,13 @@ List<InlineSpan> parseInline(
             decoration: TextDecoration.underline,
             decorationColor: linkColor.withValues(alpha: 0.4),
           ),
+        ),
+      );
+    } else if (m.group(6) != null) {
+      spans.add(
+        TextSpan(
+          text: m.group(6),
+          style: base.copyWith(fontStyle: FontStyle.italic),
         ),
       );
     }

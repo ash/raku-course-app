@@ -10,6 +10,7 @@ import 'package:course_of_raku/theme.dart';
 import 'package:course_of_raku/screens/reader_screen.dart';
 import 'package:course_of_raku/screens/quiz_player_screen.dart';
 import 'package:course_of_raku/screens/exercise_screen.dart';
+import 'package:course_of_raku/widgets/rich_text_span.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -85,6 +86,67 @@ void main() {
       for (final item in b.items) {
         expect(item, isNot(startsWith('—')));
       }
+    }
+  });
+
+  test('italics render, Raku sigils and snake_case stay literal', () {
+    const base = TextStyle();
+    List<String> italic(String s) => [
+      for (final span in parseInline(
+        s,
+        base,
+        boldColor: Colors.black,
+        codeColor: Colors.black,
+        linkColor: Colors.black,
+      ))
+        if ((span as TextSpan).style?.fontStyle == FontStyle.italic) span.text!,
+    ];
+    expect(italic('it is the _container_ that'), ['container']);
+    expect(italic('on the *same* weekday.'), ['same']);
+    expect(italic('_F₀_ = 0, _F₁_ = 1'), ['F₀', 'F₁']);
+    expect(italic("(*Variable '\$x' is not declared*)"), [
+      "Variable '\$x' is not declared",
+    ]);
+    for (final literal in [
+      r'say $_ for @*ARGS; $_.say',
+      'my_snake_case_name',
+      '2 * 3 * 4',
+      'the `_x_` in code',
+    ]) {
+      expect(italic(literal), isEmpty, reason: literal);
+    }
+  });
+
+  test('titles carry no emphasis markers; tables are rectangular', () {
+    final titles = [
+      for (final p in course.pages) ...[
+        p.title,
+        for (final e in p.exercises) e.title,
+        for (final q in p.quizzes) q.title,
+      ],
+    ];
+    final emphasis = RegExp(r'(^|\s)[_*]\S.*?[_*]($|\s)');
+    expect(titles.where(emphasis.hasMatch), isEmpty);
+    final tables = [
+      for (final p in course.pages) ...p.blocks.where((b) => b.type == 'table'),
+    ];
+    expect(tables.length, greaterThanOrEqualTo(2));
+    for (final t in tables) {
+      expect(t.rows.map((r) => r.length).toSet(), hasLength(1));
+      expect(t.align, hasLength(t.rows.first.length));
+    }
+  });
+
+  testWidgets('pages with tables render', (tester) async {
+    for (final page in course.pages.where(
+      (p) => p.blocks.any((b) => b.type == 'table'),
+    )) {
+      await tester.pumpWidget(
+        host(ReaderScreen(course: course, progress: progress, page: page)),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull, reason: page.title);
+      expect(find.byType(Table), findsOneWidget, reason: page.title);
     }
   });
 

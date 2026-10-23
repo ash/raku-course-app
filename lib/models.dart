@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 /// One block inside a lesson / quiz prompt / exercise body.
 ///
 /// type: 'p' | 'h' | 'code' | 'codeOutput' | 'output' | 'ul' | 'ol' | 'tip'
-/// | 'img' (value is the asset path)
+/// | 'img' (value is the asset path) | 'table'
 class Block {
   final String type;
   final String value;
@@ -17,6 +17,8 @@ class Block {
   final List<String> items; // ul / ol
   final double? heightEm; // img: the course's height, in em
   final double? widthPx; // img: the course's width, in px
+  final List<List<String>> rows; // table: the header row first
+  final List<String> align; // table: 'l', 'r' or 'c' per column
 
   const Block({
     required this.type,
@@ -27,6 +29,8 @@ class Block {
     this.runnable = false,
     this.heightEm,
     this.widthPx,
+    this.rows = const [],
+    this.align = const [],
   });
 
   bool get isRaku => type == 'code' && (lang == null || lang == 'raku');
@@ -40,6 +44,10 @@ class Block {
     runnable: (j['run'] ?? false) as bool,
     heightEm: (j['h'] as num?)?.toDouble(),
     widthPx: (j['w'] as num?)?.toDouble(),
+    rows: [
+      for (final r in (j['rows'] as List? ?? const [])) (r as List).cast<String>(),
+    ],
+    align: (j['align'] as List?)?.cast<String>() ?? const [],
   );
 }
 
