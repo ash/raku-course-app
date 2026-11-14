@@ -1,6 +1,1 @@
-Lessons now look the way they do on the course website:
-• Links in lessons can be tapped instead of showing up as code, and links to a part of the course open that part.
-• Italics, tables, formulas and images are shown properly.
-• Quiz explanations appear after you answer.
-• A quiz that was missing is back, making 217 in all.
-• Fixed a typo in the Fibonacci solution: the second starting value is F₁.
+Code can be edited on an iPad held upright again: tapping the code in the Playground, or after Edit on a lesson example, no longer closes the keyboard straight away. Turning the iPad while typing keeps the cursor and the keyboard.

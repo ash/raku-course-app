@@ -1,0 +1,1 @@
+Code can be edited on a tablet held upright again: tapping the code in the Playground, or after Edit on a lesson example, no longer closes the keyboard straight away. Turning the tablet while typing keeps the cursor and the keyboard.
