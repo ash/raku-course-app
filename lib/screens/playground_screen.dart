@@ -52,6 +52,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
   final _code = RakuCodeController();
   final _input = TextEditingController();
   final _focus = FocusNode();
+  final _editorKey = GlobalKey();
   final _session = RunSession();
   bool _showInput = false;
   bool _loaded = false;
@@ -215,8 +216,17 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
               top: false,
               child: LayoutBuilder(
                 builder: (context, box) {
-                  final wide = box.maxWidth >= 720 && box.maxWidth > box.maxHeight;
+                  // Side by side in a wide landscape window. The window's
+                  // shape decides, not the box's: the on-screen keyboard
+                  // shrinks the box, and an iPad in portrait would switch
+                  // to side by side as the keyboard came up, so the editor
+                  // lost focus and the keyboard went away again.
+                  final window = MediaQuery.sizeOf(context);
+                  final wide = box.maxWidth >= 720 && window.width > window.height;
                   final editor = _EditorCard(
+                    // Keeps the editor, with its cursor and keyboard, when
+                    // the layout does change (the iPad is turned).
+                    key: _editorKey,
                     controller: _code,
                     focus: _focus,
                     onRun: _run,
@@ -299,6 +309,7 @@ class _EditorCard extends StatelessWidget {
   final ValueChanged<String> onInsert;
 
   const _EditorCard({
+    super.key,
     required this.controller,
     required this.focus,
     required this.onRun,
